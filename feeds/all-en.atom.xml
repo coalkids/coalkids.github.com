@@ -1,5 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>coalkids</title><link href="http://coalkids.github.com/" rel="alternate"></link><link href="http://coalkids.github.com/feeds/all-en.atom.xml" rel="self"></link><id>http://coalkids.github.com/</id><updated>2013-02-27T10:14:00+01:00</updated><entry><title>This is the coalkids blog</title><link href="http://coalkids.github.com/this-is-coalkids-blog.html" rel="alternate"></link><updated>2013-02-27T10:14:00+01:00</updated><author><name>Julien Seiler</name></author><id>tag:coalkids.github.com,2013-02-27:this-is-coalkids-blog.html</id><summary type="html">&lt;p&gt;Hi all,&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>coalkids</title><link href="http://coalkids.github.com/" rel="alternate"></link><link href="http://coalkids.github.com/feeds/all-en.atom.xml" rel="self"></link><id>http://coalkids.github.com/</id><updated>2013-07-08T22:55:00+02:00</updated><entry><title>Flask configuration to enable CORS</title><link href="http://coalkids.github.com/flask-cors.html" rel="alternate"></link><updated>2013-07-08T22:55:00+02:00</updated><author><name>Christophe Serafin</name></author><id>tag:coalkids.github.com,2013-07-08:flask-cors.html</id><summary type="html">&lt;p&gt;When you start using Javascript framework, you will quickly face some CORS issue. This article will share how we decided to deal with cross domain browser restriction in our own application called Bulleval&lt;/p&gt;
+&lt;div class="section" id="what-is-cors"&gt;
+&lt;h2&gt;What is CORS ?&lt;/h2&gt;
+&lt;p&gt;CORS stands for Cross-origin Resource Sharing. As quoted from wikipedia, it is &amp;quot;a mechanism that allows Javascript on a web page to make XMLHttpRequests to another domain&amp;quot;.&lt;/p&gt;
+&lt;p&gt;Sending an XmlHTTPRequest (&amp;quot;XHR&amp;quot; for short) from one domain to a sub-domain or another will give you the following error message&lt;/p&gt;
+&lt;pre class="literal-block"&gt;
+Origin is not allowed by Access-Control-Allow-Origin
+&lt;/pre&gt;
+&lt;p&gt;For many years the only solution was to use proxy requests. Fortunately, the CORS mechanism provides us a better solution :&lt;/p&gt;
+&lt;p&gt;In order to ask if the server domain will allow the request, modern browsers send what we call a preflighted request to the server - using HTTP Verb OPTIONS - before sending the actual request.&lt;/p&gt;
+&lt;p&gt;HTTP Response will have to contain specific headers to allow the actual request:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nx"&gt;Access&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Control&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Allow&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Origin&lt;/span&gt; &lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="nx"&gt;http&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="c1"&gt;//your-client-side-domain/&lt;/span&gt;
+&lt;span class="nx"&gt;Access&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Control&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Allow&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Methods&lt;/span&gt; &lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="nx"&gt;GET&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;POST&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;PUT&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nx"&gt;DELETE&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="how-we-deal-with-crossdomain-request-on-our-flask-server"&gt;
+&lt;h2&gt;How we deal with crossdomain request on our Flask server ?&lt;/h2&gt;
+&lt;div class="section" id="context"&gt;
+&lt;h3&gt;Context&lt;/h3&gt;
+&lt;p&gt;At first, we used Flask decorator snippet (&lt;a class="reference external" href="http://flask.pocoo.org/snippets/56/"&gt;http://flask.pocoo.org/snippets/56/&lt;/a&gt;) to enable CORS on our web services.&lt;/p&gt;
+&lt;p&gt;Unfortunately, when you try to access an unknown URL, the server will return a 404 (NOT Found) to your OPTIONS request.&lt;/p&gt;
+&lt;p&gt;We chose to allow crossdomain request on every routes and let our custom decorator verify user access.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="http-headers"&gt;
+&lt;h3&gt;HTTP Headers&lt;/h3&gt;
+&lt;p&gt;We decided to use &amp;#64;app.before_request decorator and &amp;#64;app.after_request to modify HTTP response headers&lt;/p&gt;
+&lt;p&gt;Here is what we came up with :&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nd"&gt;@app.before_request&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;option_autoreply&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot; Always reply 200 on OPTIONS request &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;OPTIONS&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;resp&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;make_default_options_response&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+        &lt;span class="n"&gt;headers&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;ACCESS_CONTROL_REQUEST_HEADERS&amp;#39;&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;headers&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;ACCESS_CONTROL_REQUEST_HEADERS&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+
+        &lt;span class="n"&gt;h&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;
+
+        &lt;span class="c"&gt;# Allow the origin which made the XHR&lt;/span&gt;
+        &lt;span class="n"&gt;h&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Allow-Origin&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Origin&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="c"&gt;# Allow the actual method&lt;/span&gt;
+        &lt;span class="n"&gt;h&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Allow-Methods&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Request-Method&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="c"&gt;# Allow for 10 seconds&lt;/span&gt;
+        &lt;span class="n"&gt;h&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Max-Age&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;10&amp;quot;&lt;/span&gt;
+
+        &lt;span class="c"&gt;# We also keep current headers&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;headers&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;h&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Allow-Headers&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;headers&lt;/span&gt;
+
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt;
+
+
+&lt;span class="nd"&gt;@app.after_request&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;set_allow_origin&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;resp&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot; Set origin for GET, POST, PUT, DELETE requests &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+
+    &lt;span class="n"&gt;h&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;
+
+    &lt;span class="c"&gt;# Allow crossdomain for other HTTP Verbs&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;method&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;OPTIONS&amp;#39;&lt;/span&gt; &lt;span class="ow"&gt;and&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;Origin&amp;#39;&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;h&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Access-Control-Allow-Origin&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;headers&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;Origin&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="you-want-to-improve-this-solution-have-a-better-idea"&gt;
+&lt;h2&gt;You want to improve this solution / Have a better idea ?&lt;/h2&gt;
+&lt;p&gt;I would be glad to hear from you !
+Drop us an email at : &lt;a class="reference external" href="mailto:thekids&amp;#64;coalkids.com"&gt;thekids&amp;#64;coalkids.com&lt;/a&gt;&lt;/p&gt;
+&lt;/div&gt;
+</summary><category term="flask"></category><category term="cors"></category><category term="rest"></category></entry><entry><title>This is the coalkids blog</title><link href="http://coalkids.github.com/this-is-coalkids-blog.html" rel="alternate"></link><updated>2013-02-27T10:14:00+01:00</updated><author><name>The Coalkids</name></author><id>tag:coalkids.github.com,2013-02-27:this-is-coalkids-blog.html</id><summary type="html">&lt;p&gt;Hi all,&lt;/p&gt;
 &lt;p&gt;We are so happy to start the coalkids blog today.&lt;/p&gt;
 &lt;p&gt;We have so much to say and to share. Stay tuned for our upcoming articles !&lt;/p&gt;
 &lt;p&gt;The coalkids&lt;/p&gt;
